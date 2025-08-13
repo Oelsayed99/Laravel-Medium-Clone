@@ -7,17 +7,22 @@
                 <h1 class="text-2xl mb-4">{{ $post->title }}</h1>
                 {{-- User Avatar --}}
                 <div class="flex gap-4">
-                 <x-user-avatar :user="$post->user" />
+                    <x-user-avatar :user="$post->user" />
                     <div>
-                        <div class="flex gap-2">
-                            <a href="{{ route('profile.show', $post->user) }}" class="text-md font-semibold text-gray-800">
+                        <x-follow-ctr :user="$post->user" class="flex gap-2">
+                            <a href="{{ route('profile.show', $post->user) }}"
+                                class="text-md font-semibold text-gray-800">
                                 {{ $post->user->name }}
-                            </h3>
-                            &middot;
-                            <a class="text-emerald-600 " href="#">
-                                Follow
                             </a>
-                        </div>
+                            &middot;
+                            @auth
+                                <button class="text-emerald-600 " x-text="following ? 'Unfollow' : 'Follow'"
+                                    :class="following ? 'text-red-600 ' : 'text-emerald-600'" @click="follow">
+
+                                </button>
+                            @endauth
+
+                        </x-follow-ctr>
                         <div class="flex gap-2 text-gray-500 text-sm">
                             {{ $post->readTime() }} min Read
                             &middot;
@@ -25,6 +30,21 @@
                         </div>
                     </div>
                 </div>
+                @if($post->user_id == Auth::id())
+            <div class="py-4 mt-2 border-t border-b border-gray-200">
+                <x-primary-button href="{{ route('post.edit', $post->slug) }}">
+                    Edit post
+                </x-primary-button>
+                <form class="inline-block" action="{{ route('post.destroy', $post) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <x-danger-button type="submit">
+                        Delete post
+                    </x-danger-button>
+                </form>
+
+            </div>
+                @endif
                 <x-clap-button :post="$post" />
                 {{-- Content Section --}}
                 <div class="mt-8">

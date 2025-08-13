@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, HasMedia
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, InteractsWithMedia;
 
     /**
      * The attributes that are mass assignable.
@@ -50,15 +53,56 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
         ];
     }
+        public function registerMediaConversions(?Media $media = null): void
+{
+    $this
+        ->addMediaConversion('avatar')
+        ->width(128)
+        ->crop(128, 128);
+
+}
+public function registerMediaCollections(): void
+    {
+        $this
+            ->addMediaCollection('avatar')
+            ->singleFile();
+    }
     public function posts()
     {
         return $this->hasMany(Post::class);
     }
+    public function followers()
+    {
+        return $this->belongsToMany(User::class, 'followers', 'user_id', 'follower_id');
+    }
+
+    public function following()
+    {
+        return $this->belongsToMany(User::class, 'followers', 'follower_id', 'user_id');
+    }
     public function imageUrl()
     {
-        if ($this->image){
-            return Storage::url($this->image);
+        $media = $this->getFirstMedia('avatar');
+        if($media){
+            if(!$media ){
+                return null;
+            }
+            if( $media->hasGeneratedConversion('avatar')){
+                return $media->getUrl('avatar');
+            }
+            return $media->getUrl();
         }
-        return null;
+        return Storage::url('default-avatar.jpg');
+    }
+    public function isFollowingBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        return $this->followers()->where('follower_id', $user?->id)->exists();
+    }
+    public function hasClapped(Post $post): bool
+    {
+        return $post->claps()->where('user_id', $this->id)->exists();
     }
 }
